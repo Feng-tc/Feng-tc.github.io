@@ -1,7 +1,8 @@
-// 音乐数据（现在为空，等待用户选择）
+// 音乐数据
 let songs = [];
 let currentSongIndex = 0;
-let objectURLs = []; // 存储生成的Object URL
+let objectURLs = [];
+let isLoading = false;
 
 // 获取DOM元素
 const audioPlayer = document.getElementById('audio-player');
@@ -16,7 +17,65 @@ const volumeSlider = document.getElementById('volume-slider');
 const playlistEl = document.getElementById('playlist');
 const songTitleEl = document.querySelector('.song-title');
 const songArtistEl = document.querySelector('.song-artist');
+const songAlbumEl = document.querySelector('.song-album');
+const songCoverEl = document.getElementById('song-cover');
 const fileInput = document.getElementById('file-input');
+
+// 读取音频文件元数据
+function readAudioMetadata(file) {
+    return new Promise((resolve) => {
+        if (!window.jsmediatags) {
+            console.warn('jsmediatags library not loaded');
+            resolve({
+                title: getFileNameWithoutExtension(file.name),
+                artist: '未知艺术家',
+                album: '',
+                picture: null
+            });
+            return;
+        }
+
+        window.jsmediatags.read(file, {
+            onSuccess: function(tag) {
+                const tags = tag.tags;
+                let picture = null;
+                
+                // 处理封面图片
+                if (tags.picture) {
+                    const data = tags.picture.data;
+                    const format = tags.picture.format;
+                    let base64String = '';
+                    for (let i = 0; i < data.length; i++) {
+                        base64String += String.fromCharCode(data[i]);
+                    }
+                    picture = `data:${format};base64,${btoa(base64String)}`;
+                }
+
+                resolve({
+                    title: tags.title || getFileNameWithoutExtension(file.name),
+                    artist: tags.artist || '未知艺术家',
+                    album: tags.album || '',
+                    picture: picture
+                });
+            },
+            onError: function(error) {
+                console.warn('Failed to read metadata:', error);
+                resolve({
+                    title: getFileNameWithoutExtension(file.name),
+                    artist: '未知艺术家',
+                    album: '',
+                    picture: null
+                });
+            }
+        });
+    });
+}
+
+// 获取不带扩展名的文件名
+function getFileNameWithoutExtension(filename) {
+    const lastDotIndex = filename.lastIndexOf('.');
+    return lastDotIndex !== -1 ? filename.substring(0, lastDotIndex) : filename;
+}
 
 // 初始化播放列表
 function initPlaylist() {
@@ -35,19 +94,21 @@ function initPlaylist() {
         }
         
         songElement.innerHTML = `
-            <div class="song-cover">
-                <i class="fas fa-music"></i>
+            <div class="playlist-cover">
+                ${song.picture ? `<img src="${song.picture}" alt="封面">` : '<i class="fas fa-music"></i>'}
             </div>
             <div class="song-details">
                 <div class="playlist-title">${song.title}</div>
-                <div class="playlist-artist">${song.artist || '未知艺术家'}</div>
+                <div class="playlist-artist">${song.artist}</div>
             </div>
             <div class="playlist-duration">${song.duration || '0:00'}</div>
         `;
         
         songElement.addEventListener('click', () => {
-            loadSong(index);
-            playSong();
+            if (!isLoading) {
+                loadSong(index);
+                playSong();
+            }
         });
         
         playlistEl.appendChild(songElement);
@@ -69,7 +130,15 @@ function loadSong(index) {
     
     const song = songs[index];
     songTitleEl.textContent = song.title;
-    songArtistEl.textContent = song.artist || '未知艺术家';
+    songArtistEl.textContent = song.artist;
+    songAlbumEl.textContent = song.album;
+    
+    // 更新封面
+    if (song.picture) {
+        songCoverEl.innerHTML = `<img src="${song.picture}" alt="封面">`;
+    } else {
+        songCoverEl.innerHTML = '<i class="fas fa-music"></i>';
+    }
     
     audioPlayer.src = song.src;
     currentSongIndex = index;
@@ -84,14 +153,19 @@ function loadSong(index) {
         if (!isNaN(duration) && duration > 0) {
             const minutes = Math.floor(duration / 60);
             const seconds = Math.floor(duration % 60);
-            durationEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            const durationText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            durationEl.textContent = durationText;
             
             // 更新歌曲对象的持续时间
-            songs[index].duration = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            songs[index].duration = durationText;
             
             // 更新播放列表中的持续时间显示
-            if (document.querySelectorAll('.playlist-item')[index]) {
-                document.querySelectorAll('.playlist-duration')[index].textContent = songs[index].duration;
+            const playlistItems = document.querySelectorAll('.playlist-item');
+            if (playlistItems[index]) {
+                const durationEl = playlistItems[index].querySelector('.playlist-duration');
+                if (durationEl) {
+                    durationEl.textContent = durationText;
+                }
             }
         }
     };
@@ -99,6 +173,8 @@ function loadSong(index) {
 
 // 播放歌曲
 function playSong() {
+    if (isLoading || songs.length === 0) return;
+    
     audioPlayer.play()
         .then(() => {
             playBtn.innerHTML = '<i class="fas fa-pause"></i>';
@@ -119,7 +195,7 @@ function pauseSong() {
 
 // 下一首
 function nextSong() {
-    if (songs.length === 0) return;
+    if (songs.length === 0 || isLoading) return;
     
     currentSongIndex++;
     if (currentSongIndex >= songs.length) {
@@ -131,7 +207,7 @@ function nextSong() {
 
 // 上一首
 function prevSong() {
-    if (songs.length === 0) return;
+    if (songs.length === 0 || isLoading) return;
     
     currentSongIndex--;
     if (currentSongIndex < 0) {
@@ -173,9 +249,19 @@ function setVolume() {
     audioPlayer.volume = volumeSlider.value;
 }
 
+// 显示加载状态
+function showLoading() {
+    playlistEl.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> 正在读取音频文件元数据...</div>';
+}
+
 // 处理文件选择
-fileInput.addEventListener('change', function(e) {
+fileInput.addEventListener('change', async function(e) {
     const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+    
+    isLoading = true;
+    showLoading();
     
     // 释放之前创建的Object URL
     releaseObjectURLs();
@@ -184,39 +270,49 @@ fileInput.addEventListener('change', function(e) {
     songs = [];
     
     // 处理每个文件
-    files.forEach(file => {
-        if (file.type.startsWith('audio/')) {
-            // 为文件创建Object URL
-            const objectURL = URL.createObjectURL(file);
-            objectURLs.push(objectURL);
-            
-            // 从文件名中提取标题（去掉扩展名）
-            let title = file.name;
-            const lastDotIndex = title.lastIndexOf('.');
-            if (lastDotIndex !== -1) {
-                title = title.substring(0, lastDotIndex);
-            }
-            
-            // 添加到歌曲数组
-            songs.push({
-                title: title,
-                artist: '未知艺术家', // 可以尝试使用jsmediatags等库获取元数据
-                src: objectURL,
-                file: file
-            });
-        }
-    });
+    const audioFiles = files.filter(file => file.type.startsWith('audio/'));
     
-    if (songs.length > 0) {
-        // 初始化播放列表并加载第一首歌
-        currentSongIndex = 0;
-        initPlaylist();
-        loadSong(0);
-    } else {
+    if (audioFiles.length === 0) {
         alert("未选择有效的音频文件！");
+        isLoading = false;
+        initPlaylist();
+        return;
     }
     
-    // 重置文件输入，允许再次选择相同文件
+    // 并行处理所有文件的元数据
+    const songPromises = audioFiles.map(async (file) => {
+        const objectURL = URL.createObjectURL(file);
+        objectURLs.push(objectURL);
+        
+        const metadata = await readAudioMetadata(file);
+        
+        return {
+            title: metadata.title,
+            artist: metadata.artist,
+            album: metadata.album,
+            picture: metadata.picture,
+            src: objectURL,
+            file: file,
+            duration: '0:00'
+        };
+    });
+    
+    try {
+        songs = await Promise.all(songPromises);
+        
+        if (songs.length > 0) {
+            currentSongIndex = 0;
+            initPlaylist();
+            loadSong(0);
+        }
+    } catch (error) {
+        console.error('Error processing files:', error);
+        alert("处理文件时出现错误，请重试。");
+    } finally {
+        isLoading = false;
+    }
+    
+    // 重置文件输入
     fileInput.value = '';
 });
 
@@ -251,4 +347,5 @@ volumeSlider.addEventListener('input', setVolume);
 window.addEventListener('beforeunload', releaseObjectURLs);
 
 // 初始化播放器
+audioPlayer.volume = volumeSlider.value;
 initPlaylist();

@@ -4,70 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Player</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/musicplayer.css">
     <link rel="stylesheet" href="../css/button.css">
-    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.0/dist/jsmediatags.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 </head>
+<!DOCTYPE html>
+<html lang="zh-CN">
 <body>
-    <div class="container">
-        <h1>本地音乐播放器</h1>
-        
-        <div class="player-container">
-            <div class="album-art">
+    <div class="music-player">
+        <div class="file-input-section">
+            <button class="file-input-btn" onclick="document.getElementById('file-input').click()">
+                <i class="fas fa-folder-open"></i> 选择本地音乐文件
+            </button>
+            <input type="file" id="file-input" multiple accept="audio/*">
+        </div>
+
+        <div class="player-header">
+            <div class="song-cover" id="song-cover">
                 <i class="fas fa-music"></i>
             </div>
-            
             <div class="song-info">
-                <h2 class="song-title">选择本地音乐开始播放</h2>
-                <p class="song-artist">--</p>
-            </div>
-            
-            <div class="progress-container">
-                <div class="progress-bar" id="progress-bar">
-                    <div class="progress" id="progress"></div>
-                </div>
-                <div class="time-info">
-                    <span id="current-time">0:00</span>
-                    <span id="duration">0:00</span>
-                </div>
-            </div>
-            
-            <div class="controls">
-                <button class="control-btn" id="prev-btn" title="上一首">
-                    <i class="fas fa-step-backward"></i>
-                </button>
-                <button class="control-btn play-btn" id="play-btn" title="播放">
-                    <i class="fas fa-play"></i>
-                </button>
-                <button class="control-btn" id="next-btn" title="下一首">
-                    <i class="fas fa-step-forward"></i>
-                </button>
-            </div>
-            
-            <div class="volume-container">
-                <i class="fas fa-volume-up"></i>
-                <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.7">
+                <div class="song-title">选择音乐开始播放</div>
+                <div class="song-artist">未知艺术家</div>
+                <div class="song-album"></div>
             </div>
         </div>
-        
-        <div class="playlist-header">
-            <span>播放列表</span>
-            <div class="file-input-container">
-                <div class="button">
-                    <i class="fas fa-folder-open"></i> select
-                </div>
-                <input type="file" id="file-input" accept="audio/*" multiple>
-            </div>
 
+        <div class="controls">
+            <button class="control-btn" id="prev-btn" title="上一首">
+                <i class="fas fa-step-backward"></i>
+            </button>
+            <button class="control-btn play-btn" id="play-btn" title="播放">
+                <i class="fas fa-play"></i>
+            </button>
+            <button class="control-btn" id="next-btn" title="下一首">
+                <i class="fas fa-step-forward"></i>
+            </button>
         </div>
-        <div class="playlist" id="playlist">
-            <div class="playlist-empty">
-                请点击上方按钮添加本地音乐文件
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+            <div class="time-info">
+                <span id="current-time">0:00</span>
+                <span id="duration">0:00</span>
             </div>
         </div>
-        
-        <audio id="audio-player" class="audio-player"></audio>
+
+        <div class="volume-container">
+            <i class="fas fa-volume-down"></i>
+            <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="0.7">
+            <i class="fas fa-volume-up"></i>
+        </div>
+
+        <div class="playlist" id="playlist">
+            <div class="playlist-empty">请点击上方按钮添加本地音乐文件</div>
+        </div>
+
+        <audio id="audio-player"></audio>
     </div>
 
     <script src="../js/musicplayer.js"></script>
