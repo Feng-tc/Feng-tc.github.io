@@ -6,6 +6,7 @@
     <title>Music Player</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/musicplayer.css">
+    <link rel="stylesheet" href="../css/button.css">
     <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.0/dist/jsmediatags.min.js"></script>
 </head>
 <body>
@@ -53,11 +54,12 @@
         <div class="playlist-header">
             <span>播放列表</span>
             <div class="file-input-container">
-                <div class="file-input-button">
-                    <i class="fas fa-folder-open"></i> 选择本地音乐
+                <div class="button">
+                    <i class="fas fa-folder-open"></i> select
                 </div>
                 <input type="file" id="file-input" accept="audio/*" multiple>
             </div>
+
         </div>
         <div class="playlist" id="playlist">
             <div class="playlist-empty">
