@@ -71,6 +71,35 @@ function readAudioMetadata(file) {
     });
 }
 
+// 获取音频文件时长
+function getAudioDuration(file) {
+    return new Promise((resolve) => {
+        const audio = new Audio();
+        const objectURL = URL.createObjectURL(file);
+        
+        audio.addEventListener('loadedmetadata', () => {
+            const duration = audio.duration;
+            URL.revokeObjectURL(objectURL);
+            
+            if (!isNaN(duration) && duration > 0) {
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.floor(duration % 60);
+                const durationText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                resolve(durationText);
+            } else {
+                resolve('0:00');
+            }
+        });
+        
+        audio.addEventListener('error', () => {
+            URL.revokeObjectURL(objectURL);
+            resolve('0:00');
+        });
+        
+        audio.src = objectURL;
+    });
+}
+
 // 获取不带扩展名的文件名
 function getFileNameWithoutExtension(filename) {
     const lastDotIndex = filename.lastIndexOf('.');
@@ -147,28 +176,8 @@ function loadSong(index) {
     progress.style.width = '0%';
     currentTimeEl.textContent = '0:00';
     
-    // 当元数据加载完成后更新持续时间
-    audioPlayer.onloadedmetadata = function() {
-        const duration = audioPlayer.duration;
-        if (!isNaN(duration) && duration > 0) {
-            const minutes = Math.floor(duration / 60);
-            const seconds = Math.floor(duration % 60);
-            const durationText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-            durationEl.textContent = durationText;
-            
-            // 更新歌曲对象的持续时间
-            songs[index].duration = durationText;
-            
-            // 更新播放列表中的持续时间显示
-            const playlistItems = document.querySelectorAll('.playlist-item');
-            if (playlistItems[index]) {
-                const durationEl = playlistItems[index].querySelector('.playlist-duration');
-                if (durationEl) {
-                    durationEl.textContent = durationText;
-                }
-            }
-        }
-    };
+    // 设置时长显示
+    durationEl.textContent = song.duration || '0:00';
 }
 
 // 播放歌曲
@@ -251,7 +260,7 @@ function setVolume() {
 
 // 显示加载状态
 function showLoading() {
-    playlistEl.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> 正在读取音频文件元数据...</div>';
+    playlistEl.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> 正在读取音频文件数据...</div>';
 }
 
 // 处理文件选择
@@ -279,12 +288,16 @@ fileInput.addEventListener('change', async function(e) {
         return;
     }
     
-    // 并行处理所有文件的元数据
+    // 并行处理所有文件的元数据和时长
     const songPromises = audioFiles.map(async (file) => {
         const objectURL = URL.createObjectURL(file);
         objectURLs.push(objectURL);
         
-        const metadata = await readAudioMetadata(file);
+        // 同时获取元数据和时长
+        const [metadata, duration] = await Promise.all([
+            readAudioMetadata(file),
+            getAudioDuration(file)
+        ]);
         
         return {
             title: metadata.title,
@@ -293,7 +306,7 @@ fileInput.addEventListener('change', async function(e) {
             picture: metadata.picture,
             src: objectURL,
             file: file,
-            duration: '0:00'
+            duration: duration
         };
     });
     
